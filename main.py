@@ -158,7 +158,7 @@ def VisualizeGraph(mod, model_name):
     viz.render(model_name)
 
 #, target, passes
-def CompileModel(mod, params, target = "llvm", passes=[]):
+def CompileModel(mod, params, model_name):
     target = tvm.target.Target("llvm", host="llvm")
     dev = tvm.cpu(0)
     # Apply pass using opt_level=3
@@ -175,6 +175,12 @@ def CompileModel(mod, params, target = "llvm", passes=[]):
     seq = tvm.transform.Sequential(passes)
 
     mod1 = seq(mod)
+
+    llvm_ir = tvm.build(mod1, target="llvm")
+
+    # print(llvm_ir.get_source())
+    with open(model_name+".ll", "w") as f:
+        f.write(llvm_ir.get_source())
     
     # print(len(mod))
     # print("--------------------------------")
@@ -190,7 +196,7 @@ if __name__ == '__main__':
     for model_name in model_names:
         mod, params = GenerateComputationGraph(model_name)
         # VisualizeGraph(mod, model_name)
-        CompileModel(mod, params)
+        CompileModel(mod, params, model_name)
 # viz = relay_viz.RelayVisualizer(mod)
 # viz.render()
 
