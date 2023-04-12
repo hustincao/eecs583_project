@@ -127,7 +127,6 @@ if __name__ == '__main__':
     model_names = ["microsoft/resnet-50", "fxmarty/resnet-tiny-beans"]
     # model_names = ["microsoft/resnet-50"]
 
-    # datapath = '/Users/shinkamori/Documents/eecs583_project/data'
     for model_name in model_names:
 
         mod, params = GenerateComputationGraph(model_name)
