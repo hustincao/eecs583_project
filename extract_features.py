@@ -48,27 +48,58 @@ shape_list = [(input_name, img.shape)]
 mod, params = relay.frontend.from_pytorch(scripted_model, shape_list)
 feat = relay.analysis.detect_feature(mod)
 print(feat)
-# print(mod)
 fold_const = relay.transform.FoldConstant()
 mod_fold_const = fold_const(mod)
 feat_fc = relay.analysis.detect_feature(mod_fold_const)
 # print(type(mod_fold_const))
 # print(relay.analysis.check_constant(mod_fold_const))
 print(feat_fc)
-# print(mod_fold_const)
 # print(mod_fold_const[0])
 print(tvm.relay.analysis.count_layers(mod,['add'] ))
 print(len(tvm.relay.analysis.extract_fused_functions(mod_fold_const)))
-# fog =  relay.transform.FirstOrderGradient()
-# mod_fog = fog(mod)
-# feat_fog = relay.analysis.detect_feature(mod_fog)
-# print(feat_fog)
+# print(mod)
+def _traverse_expr(node, node_dict):
+    if node in node_dict:
+        return
+    node_dict[node] = len(node_dict)
 
-# # Compile the model
-# target = tvm.target.Target("llvm", host="llvm")
-# dev = tvm.cpu(0)
-# with tvm.transform.PassContext(opt_level=3):
-#     lib = relay.build(mod, target=target, params=params)
+node_dict = {}
 
-llvm_ver = tvm.build(mod, 'llvm')
-print(llvm_ver)
+feature_dict = {
+    "num_node": [],
+    "num_fv": [],
+    "num_constant": [],
+    "mac": [],
+    "num_fused_function":[],
+    "count_layers_add":[],
+    "count_layers_mul":[],
+    "count_layers_transpose":[],
+    "count_layers_reshape":[],
+}
+
+tvm.relay.analysis.post_order_visit(mod['main'], lambda x: _traverse_expr(x, node_dict))
+# print(list(node_dict.keys())[1:5])
+# print(type(list(node_dict.keys())[1]))
+# print(tvm.relay.analysis.free_vars((list(node_dict.keys())[1])))
+
+feature_dict['num_node'] = len(node_dict)
+feature_dict['num_fv'] = np.sum([len(tvm.relay.analysis.free_vars(i)) for i in node_dict.keys()])
+feature_dict['num_constant'] = np.sum([tvm.relay.analysis.check_constant(i) for i in node_dict.keys()])
+feature_dict['num_bound_var'] = np.sum([len(tvm.relay.analysis.bound_vars(i)) for i in node_dict.keys()])
+# feature_dict['mac'] = np.mean([tvm.relay.analysis.get_total_mac_number(i)for i in node_dict.keys()])
+feature_dict['count_layers_add'] = np.sum([tvm.relay.analysis.count_layers(i, ['add'])for i in node_dict.keys()])
+feature_dict['count_layers_mul'] = np.sum([tvm.relay.analysis.count_layers(i, ['multiply'])for i in node_dict.keys()])
+feature_dict['count_layers_transpose'] = np.sum([tvm.relay.analysis.count_layers(i, ['transpose'])for i in node_dict.keys()])
+feature_dict['count_layers_reshape'] = np.sum([tvm.relay.analysis.count_layers(i, ['reshape'])for i in node_dict.keys()])
+feature_dict['num_fused_function'] = np.sum([len(tvm.relay.analysis.extract_fused_functions(i)) for i in node_dict.keys()])
+x = list(node_dict.keys())[1]
+# print(tvm.relay.analysis.count_layers(x, ['add']))
+# print(tvm.relay.analysis.count_layers(x, ['mul']))
+# print(tvm.relay.analysis.count_layers(x, ['transpose']))
+# print(tvm.relay.analysis.count_layers(x, ['multiply']))
+# print(tvm.relay.analysis.count_layers(x, ['reshape']))
+# print(tvm.relay.analysis.count_layers(x, ['divide']))
+
+# print(tvm.relay.analysis.extract_fused_functions(mod))
+
+print(feature_dict)
