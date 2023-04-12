@@ -1,0 +1,5 @@
+,num_expr,num_fv,num_constant,num_fused_function,count_layers_add,count_layers_mul,count_layers_div,count_layers_transpose,count_layers_reshape,num_bound_var,count_layers_divide
+BatchingOps,509,31929,0,34,1757,0,[],0,5,268,0
+CanonicalizeOps,509,31929,0,34,1757,0,[],0,5,268,0
+FoldConstant,509,31929,0,34,1757,0,[],0,5,268,0
+SimplifyExpr,509,31929,0,34,1757,0,[],0,5,268,0

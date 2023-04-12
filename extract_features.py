@@ -5,54 +5,60 @@ from tvm.contrib.download import download_testdata
 
 import torch
 import torchvision
+from transformers import AutoImageProcessor, ResNetForImageClassification
+
 
 from PIL import Image
-
-
+import pandas as pd
 import logging
+from optparse import OptionParser
 
-# Create a logging instance
-logger = logging.getLogger('my_application')
-logger.setLevel(logging.DEBUG) # you can set this to be DEBUG, INFO, ERROR
+import os
 
-# Assign a file-handler to that instance
-fh = logging.FileHandler(
-    "file_dir.txt")
-fh.setLevel(logging.DEBUG) # again, you can set this differently
-
-
-
-img_url = "https://github.com/dmlc/mxnet.js/blob/main/data/cat.png?raw=true"
-img_path = download_testdata(img_url, "cat.png", module="data")
-img = Image.open(img_path).resize((224, 224))
 
 # Preprocess the image and convert to tensor
 from torchvision import transforms
 
-my_preprocess = transforms.Compose(
-    [
-        transforms.Resize(256),
-        transforms.CenterCrop(224),
-        transforms.ToTensor(),
-        transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
-    ]
-)
-img = my_preprocess(img)
-img = np.expand_dims(img, 0)
+def GenerateComputationGraph(model_name):
+    # model = model.eval()
+    img_url = "https://github.com/dmlc/mxnet.js/blob/main/data/cat.png?raw=true"
+    img_path = download_testdata(img_url, "cat.png", module="data")
+    img = Image.open(img_path).resize((224, 224))
 
-# Get Pytorch Model
-model_name = "resnet18"
-model = getattr(torchvision.models, model_name)(pretrained=True)
-model = model.eval()
 
-input_shape = [1, 3, 224, 224]
-input_data = torch.randn(input_shape)
-scripted_model = torch.jit.trace(model, input_data).eval()
+    my_preprocess = transforms.Compose(
+        [
+            transforms.Resize(256),
+            transforms.CenterCrop(224),
+            transforms.ToTensor(),
+            transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
+        ]
+    )
+    img = my_preprocess(img)
+    img = np.expand_dims(img, 0)
 
-# Convert the PyTorch model to a Relay function
-input_name = "input0"
-shape_list = [(input_name, img.shape)]
-mod, params = relay.frontend.from_pytorch(scripted_model, shape_list)
+    # dataset = load_dataset("huggingface/cats-image")
+    # image = dataset["test"]["image"][0]
+
+    # image_processor = AutoImageProcessor.from_pretrained("microsoft/resnet-50")
+    model = ResNetForImageClassification.from_pretrained(model_name ,torchscript=True)
+
+    # inputs = image_processor(image, return_tensors="pt")
+    # m.build([None, 224, 224, 3])  # Batch input shape.
+    input_shape = [1, 3, 224, 224]
+    input_data = torch.randn(input_shape)
+
+    # print(model)
+    # tokens_tensor = torch.tensor([indexed_tokens])
+    # segments_tensors = torch.tensor([segments_ids])
+    model = torch.jit.trace(model, input_data).eval()
+    # scripted_model = torch.jit.trace(model, input_data).eval()
+    input_name = "input0"
+    shape_list = [(input_name, img.shape)]
+    mod, params = relay.frontend.from_pytorch(model, shape_list)
+    return mod, params
+
+
 
 def get_features(mod):
     def _traverse_expr(node, node_dict):
@@ -89,7 +95,12 @@ def get_features(mod):
     feature_dict['num_fused_function'] = len(tvm.relay.analysis.extract_fused_functions(mod))
     return feature_dict
 
-pass_dict = {
+
+
+
+
+def get_feature_per_pass(mod):
+    pass_dict = {
     'BatchingOps': relay.transform.BatchingOps(),
     'CanonicalizeOps':relay.transform.BatchingOps(),
     'FoldConstant': relay.transform.FoldConstant(),
@@ -97,24 +108,50 @@ pass_dict = {
     # 'FuseOps': relay.transform.FuseOps()
     # 'DivToMul()':  tvm.relay.transform.DivToMul(),
     # 'DeadCodeElimination': relay.transform.DeadCodeElimination()
-
-}
-
-feat = relay.analysis.detect_feature(mod)
-
-
-
-# fold_const = relay.transform.AlterOpLayout()
-fold_const = relay.transform.SimplifyExpr()
-
-mod_fold_const = fold_const(mod)
-feat_fc = relay.analysis.detect_feature(mod_fold_const)
-
-pass_feature_dict = {}
-for k, v in pass_dict.items():
-    mod_pass = v(mod)
-    feature = get_features(mod_pass)
-    pass_feature_dict[k] = feature
+    }
+    feat = relay.analysis.detect_feature(mod)
+    pass_feature_dict = {}
+    for k, v in pass_dict.items():
+        mod_pass = v(mod)
+        feature = get_features(mod_pass)
+        pass_feature_dict[k] = feature
+    return pass_feature_dict
 
 
-print(pass_feature_dict)
+if __name__ == '__main__':
+    parser = OptionParser()
+    parser.add_option("-p", "--datadir",
+                      type = 'string',        
+                      help="name of data dir")
+    (options, args) = parser.parse_args()
+    model_names = ["microsoft/resnet-50", "fxmarty/resnet-tiny-beans"]
+    # model_names = ["microsoft/resnet-50"]
+
+    # datapath = '/Users/shinkamori/Documents/eecs583_project/data'
+    for model_name in model_names:
+
+        mod, params = GenerateComputationGraph(model_name)
+        model_name = model_name.replace('/', '_')
+
+        if not os.path.exists(options.datadir + '/' + model_name):
+            os.makedirs(options.datadir + '/' + model_name)
+        feat = get_feature_per_pass(mod)
+
+       
+        feats = []
+        for k,v in feat.items():
+            # df_path = options.datadir + '/' + model_name + '/' + k
+
+            feats.append(pd.DataFrame.from_dict(v, orient='index'))
+        feats_df = pd.concat(feats, axis=1, ignore_index=True).transpose()
+        # print(feats)
+        # print(feats_df)
+        # feat_df['pass'] = list(feat.keys())
+        feats_df.index = list(feat.keys())
+        # print(len(feat.keys()))
+        # print(len(feats_df))
+        # print(feats_df)
+        feats_df.to_csv(options.datadir +'/' + model_name + '/features.csv')
+
+        
+       
