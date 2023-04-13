@@ -78,6 +78,7 @@ def get_features(mod):
         "count_layers_div":[],
         "count_layers_transpose":[],
         "count_layers_reshape":[],
+        "count_layers_dense":[]
     }
 
     tvm.relay.analysis.post_order_visit(mod['main'], lambda x: _traverse_expr(x, node_dict))
@@ -92,29 +93,60 @@ def get_features(mod):
     feature_dict['count_layers_divide'] = np.sum([tvm.relay.analysis.count_layers(i, ['divide'])for i in node_dict.keys()])
     feature_dict['count_layers_transpose'] = np.sum([tvm.relay.analysis.count_layers(i, ['transpose'])for i in node_dict.keys()])
     feature_dict['count_layers_reshape'] = np.sum([tvm.relay.analysis.count_layers(i, ['reshape'])for i in node_dict.keys()])
+    feature_dict['count_layers_dense'] = np.sum([tvm.relay.analysis.count_layers(i, ['reshape'])for i in node_dict.keys()])
+
     feature_dict['num_fused_function'] = len(tvm.relay.analysis.extract_fused_functions(mod))
     return feature_dict
 
-
+def collect_ops(node):
+    ops = set()
+    def visitor(e):
+        if isinstance(e, tvm.ir.Op):
+            ops.add(e.name)
+    tvm.relay.analysis.post_order_visit(node, visitor)
+    return ops
 
 
 
 def get_feature_per_pass(mod):
     pass_dict = {
-    'BatchingOps': relay.transform.BatchingOps(),
-    'CanonicalizeOps':relay.transform.BatchingOps(),
-    'FoldConstant': relay.transform.FoldConstant(),
-    'SimplifyExpr':relay.transform.SimplifyExpr(),
+    'None': [],
+    'BatchingOps': [relay.transform.BatchingOps()],
+    'CanonicalizeOps':[relay.transform.BatchingOps()],
+    'FoldConstant': [relay.transform.FoldConstant()],
+    'SimplifyExpr':[relay.transform.SimplifyExpr()],
+    'DefuseOps': [relay.transform.DefuseOps()],
     # 'FuseOps': relay.transform.FuseOps()
-    # 'DivToMul()':  tvm.relay.transform.DivToMul(),
-    # 'DeadCodeElimination': relay.transform.DeadCodeElimination()
+    # 'DivToMul()':  tvm.relay.transform.DivToMul()
+    # 'DeadCodeElimination': [relay.transform.InferType(), relay.transform.DeadCodeElimination()]
+    # }
+    'InferType': [relay.transform.InferType()],
+
     }
-    feat = relay.analysis.detect_feature(mod)
+    # feat = relay.analysis.detect_feature(mod)
     pass_feature_dict = {}
+    # for k, v in pass_dict.items():
+        # mod_pass = v(mod)
+        # feature = get_features(mod_pass)
+    # passes = [
+    # relay.transform.InferType(),
+    # relay.transform.DeadCodeElimination()
+    
+    # ]
+    # seq = tvm.transform.Sequential(passes)
+
+    # mod_pass = seq(mod)
+    # feature = get_features(mod_pass)
+    # pass_feature_dict[0] = feature
+
     for k, v in pass_dict.items():
-        mod_pass = v(mod)
-        feature = get_features(mod_pass)
-        pass_feature_dict[k] = feature
+         if k == 'None':
+             feature = get_features(mod)
+         else:
+            seq = tvm.transform.Sequential(v)
+            mod_pass = seq(mod)
+            feature = get_features(mod_pass)
+         pass_feature_dict[k] = feature
     return pass_feature_dict
 
 
@@ -124,8 +156,8 @@ if __name__ == '__main__':
                       type = 'string',        
                       help="name of data dir")
     (options, args) = parser.parse_args()
-    model_names = ["microsoft/resnet-50", "fxmarty/resnet-tiny-beans"]
-    # model_names = ["microsoft/resnet-50"]
+    # model_names = ["microsoft/resnet-50", "fxmarty/resnet-tiny-beans"]
+    model_names = ["microsoft/resnet-50"]
 
     for model_name in model_names:
 
@@ -134,22 +166,27 @@ if __name__ == '__main__':
 
         if not os.path.exists(options.datadir + '/' + model_name):
             os.makedirs(options.datadir + '/' + model_name)
+        
         feat = get_feature_per_pass(mod)
+        # node_dict = {}
+        # def _traverse_expr(node, node_dict):
+        #     if node in node_dict:
+        #         return
+        #     node_dict[node] = len(node_dict)
+        # tvm.relay.analysis.post_order_visit(mod['main'], lambda x: _traverse_expr(x, node_dict))
+        # for node, node_id in sorted(node_dict.items(), key=lambda x: x[1]):
+        #     ops = collect_ops(node)
+        #     # print(ops.list_op_names())
+        #     for o in ops:
+        #         print(o, type(o))
 
+        #track time
        
         feats = []
         for k,v in feat.items():
-            # df_path = options.datadir + '/' + model_name + '/' + k
-
             feats.append(pd.DataFrame.from_dict(v, orient='index'))
         feats_df = pd.concat(feats, axis=1, ignore_index=True).transpose()
-        # print(feats)
-        # print(feats_df)
-        # feat_df['pass'] = list(feat.keys())
         feats_df.index = list(feat.keys())
-        # print(len(feat.keys()))
-        # print(len(feats_df))
-        # print(feats_df)
         feats_df.to_csv(options.datadir +'/' + model_name + '/features.csv')
 
         
