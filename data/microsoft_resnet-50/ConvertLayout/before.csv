@@ -1,0 +1,7 @@
+,nn.conv2d,nn.batch_norm,nn.relu,nn.max_pool2d,add,nn.adaptive_avg_pool2d,reshape,squeeze,nn.dense,nn.bias_add,layout_transform,expand_dims,pass,const
+0,53,53,49,1,16,1,1,1,1,1.0,,,sequential,0
+1,53,53,49,1,16,1,1,1,1,1.0,,,InferType,0
+2,53,53,49,1,16,1,1,1,1,1.0,,,CanonicalizeOps,0
+3,53,53,49,1,17,1,1,1,1,,,,InferType,0
+4,53,53,49,1,17,1,1,1,1,,,,ConvertLayout,0
+5,53,53,49,1,17,1,1,1,1,,55.0,1.0,InferType,0

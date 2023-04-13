@@ -1,0 +1,10 @@
+,nn.conv2d,nn.batch_norm,nn.relu,nn.max_pool2d,add,nn.adaptive_avg_pool2d,reshape,squeeze,nn.dense,nn.bias_add,pass,const
+0,53,53,49,1,16,1,1,1,1,1,sequential,0
+1,53,53,49,1,16,1,1,1,1,1,DynamicToStatic,0
+2,53,53,49,1,16,1,1,1,1,1,FoldConstant,0
+3,53,53,49,1,16,1,1,1,1,1,InferType,0
+4,53,53,49,1,16,1,1,1,1,1,InferType,0
+5,53,53,49,1,16,1,1,1,1,1,FoldConstant,0
+6,53,53,49,1,16,1,1,1,1,1,InferType,0
+7,53,53,49,1,16,1,1,1,1,1,InferType,0
+8,53,53,49,1,16,1,1,1,1,1,InferType,0

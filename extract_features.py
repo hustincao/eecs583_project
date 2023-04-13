@@ -113,52 +113,6 @@ def collect_ops(node):
     tvm.relay.analysis.post_order_visit(node, visitor)
     return ops
 
-
-
-def get_feature_per_pass(mod):
-    pass_dict = {
-    'None': [        relay.transform.FoldConstant(),
-        relay.transform.ConvertLayout(desired_layouts),
-        relay.transform.FoldConstant(),
-    ],
-    'BatchingOps': [relay.transform.BatchingOps()],
-    'CanonicalizeOps':[relay.transform.BatchingOps()],
-    'FoldConstant': [relay.transform.FoldConstant()],
-    'SimplifyExpr':[relay.transform.SimplifyExpr()],
-    'DefuseOps': [relay.transform.DefuseOps()],
-    # 'FuseOps': relay.transform.FuseOps()
-    # 'DivToMul()':  tvm.relay.transform.DivToMul()
-    # 'DeadCodeElimination': [relay.transform.InferType(), relay.transform.DeadCodeElimination()]
-    # }
-    'InferType': [relay.transform.InferType()],
-
-    }
-    # feat = relay.analysis.detect_feature(mod)
-    pass_feature_dict = {}
-    # for k, v in pass_dict.items():
-        # mod_pass = v(mod)
-        # feature = get_features(mod_pass)
-    # passes = [
-    # relay.transform.InferType(),
-    # relay.transform.DeadCodeElimination()
-    
-    # ]
-    # seq = tvm.transform.Sequential(passes)
-
-    # mod_pass = seq(mod)
-    # feature = get_features(mod_pass)
-    # pass_feature_dict[0] = feature
-
-    for k, v in pass_dict.items():
-         if k == 'None':
-             feature = get_features(mod)
-         else:
-            seq = tvm.transform.Sequential(v)
-            mod_pass = seq(mod)
-            feature = get_features(mod_pass)
-         pass_feature_dict[k] = feature
-    return pass_feature_dict
-
 @pass_instrument
 class RelayCallNodeDiffer:
     def __init__(self):
@@ -167,6 +121,7 @@ class RelayCallNodeDiffer:
         # Use stack to make sure we get correct before/after pairs.
         self._op_cnt_before_stack = []
         self._before = []
+        self._const = []
         self._after = []
 
     def enter_pass_ctx(self):
@@ -177,7 +132,7 @@ class RelayCallNodeDiffer:
         assert len(self._op_cnt_before_stack) == 0, "The stack is not empty. Something wrong."
 
     def run_before_pass(self, mod, info):
-        self._before.append((info.name, self._count_nodes(mod)))
+        self._before.append((info.name, self._count_nodes(mod), self._count_const(mod)))
         self._op_cnt_before_stack.append((info.name, self._count_nodes(mod)))
 
     def run_after_pass(self, mod, info):
@@ -191,7 +146,7 @@ class RelayCallNodeDiffer:
  
         op_diff = self._diff(op_to_cnt_after, op_to_cnt_before)
         # only record passes causing differences.
-        self._after.append((info.name, op_to_cnt_after))
+        self._after.append((info.name, op_to_cnt_after, self._count_const(mod)))
         if op_diff:
             self._op_diff.append((info.name, op_diff))
 
@@ -222,6 +177,14 @@ class RelayCallNodeDiffer:
 
         relay.analysis.post_order_visit(mod["main"], visit)
         return ret
+    @staticmethod
+    def _count_const(mod):
+        ret = 0
+        def visit(node, ret):
+            if tvm.relay.analysis.check_constant(node):
+                ret += 1
+        relay.analysis.post_order_visit(mod["main"], lambda x: visit(x, ret))
+        return ret
 
     @staticmethod
     def _diff(d_after, d_before):
@@ -241,7 +204,7 @@ class RelayCallNodeDiffer:
         return ret
 
 
-def get_features(mod, param, seq):
+def get_features_ops(mod, param, seq):
 
     pass_seq = tvm.transform.Sequential(
         seq
@@ -263,15 +226,20 @@ def get_features(mod, param, seq):
     before_feat = [k[1] for k in before]
     before_df = pd.DataFrame.from_dict(before_feat)
     before_df['pass'] = [k[0] for k in before]
+    before_df['const'] = [k[2] for k in before]
 
     after_feat = [k[1] for k in after]
     after_df = pd.DataFrame.from_dict(after_feat)
     after_df['pass'] = [k[0] for k in after]
-    print('diff\n', diff)
+    after_df['const'] = [k[2] for k in after]
+
+    # print('diff\n', diff)
     diff_feat = [k[1] for k in diff]
     diff_df = pd.DataFrame.from_dict(diff_feat)
     diff_df['pass'] = [k[0] for k in diff]
-    print('diffdf \n', diff_df)
+    # print('diffdf \n', diff_df)
+
+
 
     return before_df, after_df, diff_df, profiles
 
@@ -282,10 +250,23 @@ def get_features_for_pass(mod, param, datadir, model_name):
     pass_dict = {
     'FoldConstant': [relay.transform.FoldConstant()],
     'BatchingOps': [relay.transform.BatchingOps()],
-    'CanonicalizeOps':[relay.transform.BatchingOps()],
+    'CanonicalizeOps':[relay.transform.CanonicalizeOps()],
+    'CanonicalizeCast': [relay.transform.CanonicalizeCast()],
     'FoldConstant': [relay.transform.FoldConstant()],
     'SimplifyExpr':[relay.transform.SimplifyExpr()],
     'DefuseOps': [relay.transform.DefuseOps()],
+    'AlterOpLayout': [relay.transform.AlterOpLayout()],
+    'ConvertLayout':[relay.transform.ConvertLayout(desired_layouts)],
+    'EliminateCommonSubexpr':[relay.transform.EliminateCommonSubexpr()],
+    'DeadCodeElimination':[relay.transform.DeadCodeElimination()],
+    'FastMath': [relay.transform.FastMath()],
+    'RemoveUnusedFunctions': [relay.transform.RemoveUnusedFunctions()],
+    'CombineParallelConv2D': [relay.transform.CombineParallelConv2D()],
+    'DynamicToStatic': [relay.transform.DynamicToStatic()],
+    'FakeQuantizationToInteger':[relay.transform.FakeQuantizationToInteger()],
+    'ToGraphNormalForm':[relay.transform.ToGraphNormalForm()],
+    'CombineParallelDense':[relay.transform.CombineParallelDense()],
+
     'BL': [ relay.transform.AlterOpLayout(),
             relay.transform.CanonicalizeCast(),
             relay.transform.CanonicalizeOps(),
@@ -348,20 +329,25 @@ def get_features_for_pass(mod, param, datadir, model_name):
     ]
 
     }
-
+    # pass_dict = {
+    #     'test': [relay.transform.FoldConstant()]
+    # }
 
 
     features_bef = {}
     features_after = {}
     features_time = {}
     for k, v in pass_dict.items():
-        before_df, after_df, diff_df, profiles = get_features(mod, param, v)
+        before_df, after_df, diff_df, profiles = get_features_ops(mod, param, v)
         datapath = datadir + '/' + model_name + '/' + k + '/'
         if not os.path.exists(datapath):
             os.makedirs(datapath)
         before_df.to_csv(datapath + 'before.csv')
         after_df.to_csv(datapath + 'after.csv')
         diff_df.to_csv(datapath + 'diff.csv')
+        with open(datapath + 'profile.txt', 'w') as f:
+            f.write(profiles)
+    
 
     # return (features_bef, features_after, features_time)
 

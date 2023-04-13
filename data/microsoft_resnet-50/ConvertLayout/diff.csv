@@ -1,0 +1,4 @@
+,add,nn.bias_add,layout_transform,expand_dims,pass
+0,1.0,-1.0,,,CanonicalizeOps
+1,,,55.0,1.0,ConvertLayout
+2,1.0,-1.0,55.0,1.0,sequential

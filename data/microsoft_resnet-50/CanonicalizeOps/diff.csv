@@ -1,1 +1,3 @@
-,pass
+,add,nn.bias_add,pass
+0,1,-1,CanonicalizeOps
+1,1,-1,sequential

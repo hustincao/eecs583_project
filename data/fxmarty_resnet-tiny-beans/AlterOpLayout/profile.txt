@@ -1,0 +1,4 @@
+sequential: 22705us [5451us] (100.00%; 100.00%)
+	InferType: 5288us [5288us] (23.29%; 23.29%)
+	AlterOpLayout: 11965us [7050us] (52.70%; 52.70%)
+		InferType: 4915us [4915us] (21.65%; 41.08%)
