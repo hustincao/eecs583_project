@@ -1,0 +1,5 @@
+,nn.conv2d,nn.batch_norm,nn.relu,nn.max_pool2d,add,nn.adaptive_avg_pool2d,reshape,squeeze,nn.dense,nn.bias_add,pass
+0,11,11,9,1,4,1,1,1,1,1,sequential
+1,11,11,9,1,4,1,1,1,1,1,InferType
+2,11,11,9,1,4,1,1,1,1,1,DefuseOps
+3,11,11,9,1,4,1,1,1,1,1,InferType

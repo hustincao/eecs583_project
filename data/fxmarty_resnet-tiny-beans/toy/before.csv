@@ -1,0 +1,11 @@
+,nn.conv2d,nn.batch_norm,nn.relu,nn.max_pool2d,add,nn.adaptive_avg_pool2d,reshape,squeeze,nn.dense,nn.bias_add,layout_transform,expand_dims,pass
+0,11,11,9,1,4,1,1,1,1,1.0,,,sequential
+1,11,11,9,1,4,1,1,1,1,1.0,,,FoldConstant
+2,11,11,9,1,4,1,1,1,1,1.0,,,InferType
+3,11,11,9,1,4,1,1,1,1,1.0,,,InferType
+4,11,11,9,1,4,1,1,1,1,1.0,,,CanonicalizeOps
+5,11,11,9,1,5,1,1,1,1,,,,InferType
+6,11,11,9,1,5,1,1,1,1,,,,ConvertLayout
+7,11,11,9,1,5,1,1,1,1,,13.0,1.0,InferType
+8,11,11,9,1,5,1,1,1,1,,13.0,1.0,FoldConstant
+9,11,11,9,1,5,1,1,1,1,,2.0,,InferType

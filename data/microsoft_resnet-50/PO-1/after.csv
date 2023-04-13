@@ -1,0 +1,14 @@
+,nn.conv2d,nn.batch_norm,nn.relu,nn.max_pool2d,add,nn.adaptive_avg_pool2d,reshape,squeeze,nn.dense,nn.bias_add,pass
+0,53,53,49,1,16,1,1,1,1,1,InferType
+1,53,53,49,1,16,1,1,1,1,1,InferType
+2,53,53,49,1,16,1,1,1,1,1,CanonicalizeCast
+3,53,53,49,1,16,1,1,1,1,1,InferType
+4,53,53,49,1,16,1,1,1,1,1,InferType
+5,53,53,49,1,16,1,1,1,1,1,AlterOpLayout
+6,53,53,49,1,16,1,1,1,1,1,InferType
+7,53,53,49,1,16,1,1,1,1,1,InferType
+8,53,53,49,1,16,1,1,1,1,1,DefuseOps
+9,53,53,49,1,16,1,1,1,1,1,InferType
+10,53,53,49,1,16,1,1,1,1,1,InferType
+11,53,53,49,1,16,1,1,1,1,1,FakeQuantizationToInteger
+12,53,53,49,1,16,1,1,1,1,1,sequential
