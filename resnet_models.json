@@ -1,0 +1,12 @@
+[
+    "microsoft/resnet-50",
+    "facebook/detr-resnet-50",
+    "fxmarty/resnet-tiny-beans",
+    "facebook/detr-resnet-101",
+    "facebook/detr-resnet-101-dc5",
+    "microsoft/resnet-18",
+    "facebook/detr-resnet-50-panoptic",
+    "microsoft/conditional-detr-resnet-50",
+    "microsoft/resnet-152",
+    "microsoft/resnet-34"
+]

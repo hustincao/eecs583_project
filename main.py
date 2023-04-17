@@ -4,97 +4,114 @@ import numpy as np
 from tvm.contrib.download import download_testdata
 from tvm.contrib import relay_viz
 from graphviz import Digraph
-
+import json
 # PyTorch imports
 from datasets import load_dataset
 
 import torch
 import torchvision
-from transformers import AutoImageProcessor, ResNetForImageClassification
+from transformers import ResNetForImageClassification, BertModel, BertTokenizer
 
 from PIL import Image
 
 # model_name: used to get model form pytorch
-def GenerateComputationGraph(model_name):
-    # model = model.eval()
-    img_url = "https://github.com/dmlc/mxnet.js/blob/main/data/cat.png?raw=true"
-    img_path = download_testdata(img_url, "cat.png", module="data")
-    img = Image.open(img_path).resize((224, 224))
+def GenerateComputationGraph(model, nn_arch):
+    
+    # Create different input data for different nn_arch
+    if nn_arch == "resnet":
+        img_url = "https://github.com/dmlc/mxnet.js/blob/main/data/cat.png?raw=true"
+        img_path = download_testdata(img_url, "cat.png", module="data")
+        img = Image.open(img_path).resize((224, 224))
+        # Preprocess the image and convert to tensor
+        from torchvision import transforms
 
-    # Preprocess the image and convert to tensor
-    from torchvision import transforms
+        my_preprocess = transforms.Compose(
+            [
+                transforms.Resize(256),
+                transforms.CenterCrop(224),
+                transforms.ToTensor(),
+                transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
+            ]
+        )
+        img = my_preprocess(img)
+        img = np.expand_dims(img, 0)
 
-    my_preprocess = transforms.Compose(
-        [
-            transforms.Resize(256),
-            transforms.CenterCrop(224),
-            transforms.ToTensor(),
-            transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
-        ]
-    )
-    img = my_preprocess(img)
-    img = np.expand_dims(img, 0)
 
-    # dataset = load_dataset("huggingface/cats-image")
-    # image = dataset["test"]["image"][0]
+        input_shape = [1, 3, 224, 224]
+        input_data = torch.randn(input_shape)
 
-    # image_processor = AutoImageProcessor.from_pretrained("microsoft/resnet-50")
-    model = ResNetForImageClassification.from_pretrained(model_name ,torchscript=True)
+        traced_model = torch.jit.trace(model, input_data).eval()
+        input_name = "input0"
+        shape_list = [(input_name, img.shape)]
 
-    # inputs = image_processor(image, return_tensors="pt")
-    # m.build([None, 224, 224, 3])  # Batch input shape.
-    input_shape = [1, 3, 224, 224]
-    input_data = torch.randn(input_shape)
+    elif nn_arch == "bert":
+        enc = BertTokenizer.from_pretrained("bert-base-uncased")
 
-    # print(model)
-    # tokens_tensor = torch.tensor([indexed_tokens])
-    # segments_tensors = torch.tensor([segments_ids])
-    model = torch.jit.trace(model, input_data).eval()
+        # Tokenizing input text
+        text = "[CLS] Who was Jim Henson ? [SEP] Jim Henson was a puppeteer [SEP]"
+        tokenized_text = enc.tokenize(text)
+
+        # Masking one of the input tokens
+        masked_index = 8
+        tokenized_text[masked_index] = '[MASK]'
+        indexed_tokens = enc.convert_tokens_to_ids(tokenized_text)
+        segments_ids = [0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1]
+
+        # Creating a dummy input
+        tokens_tensor = torch.tensor([indexed_tokens])
+        segments_tensors = torch.tensor([segments_ids])
+        dummy_input = [tokens_tensor, segments_tensors]
+
+        # If you are instantiating the model with `from_pretrained` you can also easily set the TorchScript flag
+        model = BertModel.from_pretrained("bert-base-uncased", torchscript=True)
+
+        model.eval()
+        for p in model.parameters():
+            p.requires_grad_(False)
+
+        traced_model = torch.jit.trace(model, [tokens_tensor, segments_tensors])
+        traced_model.eval()
+        for p in traced_model.parameters():
+            p.requires_grad_(False)
+        
+        shape_list = [(i.debugName().split('.')[0], i.type().sizes()) for i in  list(traced_model.graph.inputs())[1:]]
+
+        mod, params = tvm.relay.frontend.pytorch.from_pytorch(traced_model, shape_list, default_dtype="float32")
+        # enc = BertTokenizer.from_pretrained("bert-base-uncased")
+        # # Tokenizing input text
+        # text = "[CLS] Who was Jim Henson ? [SEP] Jim Henson was a puppeteer [SEP]"
+        # tokenized_text = enc.tokenize(text)
+
+        # # Masking one of the input tokens
+        # masked_index = 8
+        # tokenized_text[masked_index] = "[MASK]"
+        # indexed_tokens = enc.convert_tokens_to_ids(tokenized_text)
+        # segments_ids = [0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1]
+
+        # # Creating a dummy input
+        # tokens_tensor = torch.tensor([indexed_tokens])
+        # segments_tensors = torch.tensor([segments_ids])
+        # dummy_input = [tokens_tensor, segments_tensors]
+
+        # tokens_tensor = torch.tensor([indexed_tokens])
+        # segments_tensors = torch.tensor([segments_ids])
+        # input_data = [tokens_tensor, segments_tensors]
+
+        # model = torch.jit.trace(model, input_data).eval()
+        # for p in model.parameters():
+        #     p.requires_grad_(False)
+        # shape_list = [(i.debugName().split('.')[0], i.type().sizes()) for i in  list(model.graph.inputs())[1:]]
+        # print(shape_list)
+
+
     # scripted_model = torch.jit.trace(model, input_data).eval()
-    input_name = "input0"
-    shape_list = [(input_name, img.shape)]
-    mod, params = relay.frontend.from_pytorch(model, shape_list)
-    return mod, params
+    mod, params = relay.frontend.from_pytorch(traced_model, shape_list)
 
-def Old_GenerateComputationGraph(model_name):
-
-    # Get image to use as input_infos for relay.frontend.from_pytorch (not sure if/how to omit this)
-    # More info: https://tvm.apache.org/docs/how_to/compile_models/from_pytorch.html
-    img_url = "https://github.com/dmlc/mxnet.js/blob/main/data/cat.png?raw=true"
-    img_path = download_testdata(img_url, "cat.png", module="data")
-    img = Image.open(img_path).resize((224, 224))
-
-    # Preprocess the image and convert to tensor
-    from torchvision import transforms
-
-    my_preprocess = transforms.Compose(
-        [
-            transforms.Resize(256),
-            transforms.CenterCrop(224),
-            transforms.ToTensor(),
-            transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
-        ]
-    )
-    img = my_preprocess(img)
-    img = np.expand_dims(img, 0)
-
-    model = getattr(torchvision.models, model_name)(pretrained=True)
-    model = model.eval()
-    # model = torchvision.models.detection.fasterrcnn_resnet50_fpn(pretrained=True)
-
-    input_shape = [1, 3, 224, 224]
-    input_data = torch.randn(input_shape)
-    scripted_model = torch.jit.trace(model, input_data).eval()
-
-    # Convert the PyTorch model to a Relay function
-    input_name = "input0"
-    shape_list = [(input_name, img.shape)]
-    mod, params = relay.frontend.from_pytorch(scripted_model, shape_list)
     return mod, params
 
 # model_name: used to save graph to file
 # mod: computation graph generated by 
-def VisualizeGraph(mod, model_name):
+def VisualizeGraph(mod, model_name, nn_arch):
     # graphviz attributes
     graph_attr = {"color": "red"}
     node_attr = {"color": "blue"}
@@ -125,61 +142,72 @@ def VisualizeGraph(mod, model_name):
         relay_param=params,
         plotter=dot_plotter,
         parser=relay_viz.DotVizParser())
-    viz.render(model_name)
+    viz.render("viz_graphs/"+nn_arch+"/"+model_name)
 
 #, target, passes
-def CompileModel(mod, params, model_name):
+def CompileModel(mod, params, model_name, nn_arch):
+    print(nn_arch)
     target = tvm.target.Target("llvm", host="llvm")
-    dev = tvm.cpu(0)
+    # dev = tvm.cpu(0)
+
     # Apply pass using opt_level=3
     # with tvm.transform.PassContext(opt_level=3):
     #     lib = relay.build(mod, target=target, params=params)
     
     # Apply passes sequentially
-    passes = [
-            relay.transform.FoldConstant(),
-            tvm.transform.PrintIR(),
-            relay.transform.EliminateCommonSubexpr(),
-            relay.transform.FuseOps(),
-        ]
-    seq = tvm.transform.Sequential(passes)
+    # passes = [
+    #         relay.transform.FoldConstant(),
+    #         # tvm.transform.PrintIR(),
+    #         relay.transform.EliminateCommonSubexpr(),
+    #         relay.transform.FuseOps(),
+    #     ]
+    # seq = tvm.transform.Sequential(passes)
 
-    mod1 = seq(mod)
+    # mod1 = seq(mod)
 
-    llvm_ir = tvm.build(mod1, target="llvm")
+    llvm_ir = tvm.build(mod, target="llvm")
 
-    # print(llvm_ir.get_source())
-    with open(model_name+".ll", "w") as f:
+    with open("llvm/"+nn_arch+"/"+model_name+".ll", "w") as f:
         f.write(llvm_ir.get_source())
     
-    # print(len(mod))
-    # print("--------------------------------")
-    # print(len(mod1))
 
     # performance measuring: https://tvm.apache.org/docs/tutorial/autotvm_relay_x86.html#compile-the-model-with-relay
     # compiling DL models: https://tvm.apache.org/docs/tutorial/relay_quick_start.html
 
 if __name__ == '__main__':
-    # Pytorch models
-    # model_names = ['alexnet', 'convnext_base', 'convnext_large', 'convnext_small', 'convnext_tiny', 'deeplabv3_mobilenet_v3_large', 'deeplabv3_resnet101', 'deeplabv3_resnet50', 'densenet121', 'densenet161', 'densenet169', 'densenet201', 'efficientnet_b0', 'efficientnet_b1', 'efficientnet_b2', 'efficientnet_b3', 'efficientnet_b4', 'efficientnet_b5', 'efficientnet_b6', 'efficientnet_b7', 'efficientnet_v2_l', 'efficientnet_v2_m', 'efficientnet_v2_s', 'fasterrcnn_mobilenet_v3_large_320_fpn', 'fasterrcnn_mobilenet_v3_large_fpn', 'fasterrcnn_resnet50_fpn', 'fasterrcnn_resnet50_fpn_v2', 'fcn_resnet101', 'fcn_resnet50', 'fcos_resnet50_fpn', 'googlenet', 'inception_v3', 'keypointrcnn_resnet50_fpn', 'lraspp_mobilenet_v3_large', 'maskrcnn_resnet50_fpn', 'maskrcnn_resnet50_fpn_v2', 'maxvit_t', 'mc3_18', 'mnasnet0_5', 'mnasnet0_75', 'mnasnet1_0', 'mnasnet1_3', 'mobilenet_v2', 'mobilenet_v3_large', 'mobilenet_v3_small', 'mvit_v1_b', 'mvit_v2_s', 'quantized_googlenet', 'quantized_inception_v3', 'quantized_mobilenet_v2', 'quantized_mobilenet_v3_large', 'quantized_resnet18', 'quantized_resnet50', 'quantized_resnext101_32x8d', 'quantized_resnext101_64x4d', 'quantized_shufflenet_v2_x0_5', 'quantized_shufflenet_v2_x1_0', 'quantized_shufflenet_v2_x1_5', 'quantized_shufflenet_v2_x2_0', 'r2plus1d_18', 'r3d_18', 'raft_large', 'raft_small', 'regnet_x_16gf', 'regnet_x_1_6gf', 'regnet_x_32gf', 'regnet_x_3_2gf', 'regnet_x_400mf', 'regnet_x_800mf', 'regnet_x_8gf', 'regnet_y_128gf', 'regnet_y_16gf', 'regnet_y_1_6gf', 'regnet_y_32gf', 'regnet_y_3_2gf', 'regnet_y_400mf', 'regnet_y_800mf', 'regnet_y_8gf', 'resnet101', 'resnet152', 'resnet18', 'resnet34', 'resnet50', 'resnext101_32x8d', 'resnext101_64x4d', 'resnext50_32x4d', 'retinanet_resnet50_fpn', 'retinanet_resnet50_fpn_v2', 's3d', 'shufflenet_v2_x0_5', 'shufflenet_v2_x1_0', 'shufflenet_v2_x1_5', 'shufflenet_v2_x2_0', 'squeezenet1_0', 'squeezenet1_1', 'ssd300_vgg16', 'ssdlite320_mobilenet_v3_large', 'swin3d_b', 'swin3d_s', 'swin3d_t', 'swin_b', 'swin_s', 'swin_t', 'swin_v2_b', 'swin_v2_s', 'swin_v2_t', 'vgg11', 'vgg11_bn', 'vgg13', 'vgg13_bn', 'vgg16', 'vgg16_bn', 'vgg19', 'vgg19_bn', 'vit_b_16', 'vit_b_32', 'vit_h_14', 'vit_l_16', 'vit_l_32', 'wide_resnet101_2', 'wide_resnet50_2']
-    # model_names = ['wide_resnet101_2', 'wide_resnet50_2']
 
-    # Huggingface models
-    model_names = ["microsoft/resnet-50", "fxmarty/resnet-tiny-beans"]
+  
+    #resnet, bert, Potential todo: suppoprt ssd and mobilenet
+    nn_arch = "bert"
+
+    # Config to easily change from one neural net architecture to another
+    model_config = {
+        "bert":{
+            "file": "bert_models.json",
+            "loader": BertModel
+        },
+        "resnet":{
+            "file": "resnet_models.json",
+            "loader": ResNetForImageClassification
+        }
+    }
+
+    # Get list of models to load
+    with open(model_config[nn_arch]["file"]) as user_file:
+        model_names = json.load(user_file)
+
     for model_name in model_names:
-        # Create output file that doesn't have a / in it
-        output_file = model_name[model_name.rindex("/")+1:]
+        model = model_config[nn_arch]["loader"].from_pretrained(model_name ,torchscript=True)
+        # model = ResNetForImageClassification.from_pretrained(model_name ,torchscript=True)
+        # model = BertModel.from_pretrained(model_name ,torchscript=True)
 
-        mod, params = GenerateComputationGraph(model_name)
-        VisualizeGraph(mod, output_file)
-        CompileModel(mod, params, output_file)
+        # Create output file names that doesn't have a / in it
+        output_file = model_name[model_name.rindex("/")+1:] if "/" in model_name else model_name
 
-    # for model_name in model_names:
-    #     mod, params = GenerateComputationGraph(model_name)
-    #     # VisualizeGraph(mod, model_name)
-    #     CompileModel(mod, params, model_name)
-# viz = relay_viz.RelayVisualizer(mod)
-# viz.render()
+        mod, params = GenerateComputationGraph(model, nn_arch)
+        VisualizeGraph(mod, output_file, nn_arch)
+        CompileModel(mod, params, output_file, nn_arch)
+        
 
 # Compile the model
 # target = tvm.target.Target("llvm", host="llvm")

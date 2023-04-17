@@ -1,0 +1,7 @@
+[
+    "bert-base-uncased",
+    "bert-base-cased",
+    "bert-base-multilingual-cased",
+    "prajjwal1/bert-tiny",
+    "vinai/bertweet-base"
+]
