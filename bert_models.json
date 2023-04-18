@@ -3,5 +3,10 @@
     "bert-base-cased",
     "bert-base-multilingual-cased",
     "prajjwal1/bert-tiny",
-    "vinai/bertweet-base"
+    "vinai/bertweet-base",
+    "dslim/bert-base-NER",
+    "bert-large-uncased",
+    "YituTech/conv-bert-base",
+    "Rostlab/prot_bert",
+    "deepset/bert-large-uncased-whole-word-masking-squad2"
 ]
