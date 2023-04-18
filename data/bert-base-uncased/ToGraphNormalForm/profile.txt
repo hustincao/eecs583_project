@@ -1,0 +1,3 @@
+sequential: 242157us [77272us] (100.00%; 100.00%)
+	ToGraphNormalForm: 164885us [90462us] (68.09%; 68.09%)
+		InferType: 74422us [74422us] (30.73%; 45.14%)

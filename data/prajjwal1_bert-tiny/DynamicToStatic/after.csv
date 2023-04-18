@@ -1,0 +1,10 @@
+,cast,take,add,nn.layer_norm,nn.dropout,reshape,nn.dense,nn.bias_add,transpose,nn.batch_matmul,divide,expand_dims,multiply,subtract,nn.softmax,erf,tanh,pass,const
+0,2,2,50,25,37,264,73,73,84,24,12,2,38,1,12,12,1,InferType,0
+1,2,2,50,25,37,264,73,73,84,24,12,2,38,1,12,12,1,FoldConstant,0
+2,2,2,50,25,37,264,73,73,84,24,12,2,38,1,12,12,1,InferType,0
+3,2,2,50,25,37,264,73,73,84,24,12,2,38,1,12,12,1,InferType,0
+4,2,2,50,25,37,264,73,73,84,24,12,2,38,1,12,12,1,FoldConstant,0
+5,2,2,50,25,37,264,73,73,84,24,12,2,38,1,12,12,1,InferType,0
+6,2,2,50,25,37,264,73,73,84,24,12,2,38,1,12,12,1,InferType,0
+7,2,2,50,25,37,264,73,73,84,24,12,2,38,1,12,12,1,DynamicToStatic,0
+8,2,2,50,25,37,264,73,73,84,24,12,2,38,1,12,12,1,sequential,0

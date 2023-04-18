@@ -1,0 +1,4 @@
+sequential: 263925us [92038us] (100.00%; 100.00%)
+	InferType: 52715us [52715us] (19.97%; 19.97%)
+	CanonicalizeOps: 119171us [67698us] (45.15%; 45.15%)
+		InferType: 51473us [51473us] (19.50%; 43.19%)

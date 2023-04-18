@@ -1,3 +1,3 @@
-sequential: 13232us [3524us] (100.00%; 100.00%)
-	FoldConstant: 9708us [4083us] (73.37%; 73.37%)
-		InferType: 5625us [5625us] (42.51%; 57.94%)
+sequential: 15099us [4643us] (100.00%; 100.00%)
+	FoldConstant: 10456us [4535us] (69.25%; 69.25%)
+		InferType: 5921us [5921us] (39.22%; 56.63%)

@@ -1,0 +1,4 @@
+sequential: 325471us [113226us] (100.00%; 100.00%)
+	InferType: 57836us [57836us] (17.77%; 17.77%)
+	FakeQuantizationToInteger: 154408us [86848us] (47.44%; 47.44%)
+		InferType: 67560us [67560us] (20.76%; 43.75%)

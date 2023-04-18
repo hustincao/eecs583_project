@@ -1,0 +1,3 @@
+,cast,take,strided_slice,repeat,add,nn.layer_norm,nn.dropout,reshape,transpose,nn.dense,nn.bias_add,nn.batch_matmul,divide,expand_dims,multiply,subtract,nn.softmax,erf,tanh,pass,const
+0,4,4,2,1,50,25,37,264,228,73,73,24,12,2,38,1,12,12,1,sequential,0
+1,4,4,2,1,50,25,37,264,228,73,73,24,12,2,38,1,12,12,1,sequential,0

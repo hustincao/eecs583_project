@@ -1,0 +1,2 @@
+sequential: 85239us [61521us] (100.00%; 100.00%)
+	RemoveUnusedFunctions: 23718us [23718us] (27.83%; 27.83%)

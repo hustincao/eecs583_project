@@ -1,0 +1,3 @@
+sequential: 186585us [97281us] (100.00%; 100.00%)
+	InferType: 55954us [55954us] (29.99%; 29.99%)
+	DeadCodeElimination: 33350us [33350us] (17.87%; 17.87%)

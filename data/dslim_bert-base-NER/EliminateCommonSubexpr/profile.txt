@@ -1,0 +1,4 @@
+sequential: 413741us [110974us] (100.00%; 100.00%)
+	InferType: 61548us [61548us] (14.88%; 14.88%)
+	EliminateCommonSubexpr: 241218us [172323us] (58.30%; 58.30%)
+		InferType: 68895us [68895us] (16.65%; 28.56%)
