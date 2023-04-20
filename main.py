@@ -6,6 +6,10 @@ from tvm.contrib import relay_viz
 from graphviz import Digraph
 import json
 # PyTorch imports
+from tvm.ir.instrument import (
+    PassTimingInstrument,
+    pass_instrument,
+)
 from datasets import load_dataset
 
 import torch
@@ -145,8 +149,22 @@ def VisualizeGraph(mod, model_name, nn_arch):
     viz.render("viz_graphs/"+nn_arch+"/"+model_name)
 
 #, target, passes
-def CompileModel(mod, params, model_name, nn_arch):
-    print(nn_arch)
+def CompileModel(mod, passes):
+    target = tvm.target.Target("llvm", host="llvm")
+    
+    pass_seq = tvm.transform.Sequential(passes)
+
+    timing_inst = PassTimingInstrument()
+
+    with tvm.transform.PassContext(instruments=[timing_inst]):
+        mod = pass_seq(mod)
+        profiles = timing_inst.render()
+
+    print("Printing results of timing profile...")
+    print(profiles)
+
+
+def CompileModelToLLVM(mod, params, model_name, nn_arch):
     target = tvm.target.Target("llvm", host="llvm")
     # dev = tvm.cpu(0)
 
@@ -154,16 +172,25 @@ def CompileModel(mod, params, model_name, nn_arch):
     # with tvm.transform.PassContext(opt_level=3):
     #     lib = relay.build(mod, target=target, params=params)
     
-    # Apply passes sequentially
-    # passes = [
-    #         relay.transform.FoldConstant(),
-    #         # tvm.transform.PrintIR(),
-    #         relay.transform.EliminateCommonSubexpr(),
-    #         relay.transform.FuseOps(),
-    #     ]
-    # seq = tvm.transform.Sequential(passes)
+    #Apply passes sequentially
+    passes = [
+            # PassTimingInstrument()
+            # relay.transform.FoldConstant(),
+            # # tvm.transform.PrintIR(),
+            # relay.transform.EliminateCommonSubexpr(),
+            # relay.transform.FuseOps(),
+        ]
+    pass_seq = tvm.transform.Sequential(passes)
 
-    # mod1 = seq(mod)
+    timing_inst = PassTimingInstrument()
+
+    # mod["main"] = bind_params_by_name(mod["main"], params)
+    with tvm.transform.PassContext(instruments=[timing_inst]):
+        mod = pass_seq(mod)
+        profiles = timing_inst.render()
+
+    print("Printing results of timing profile...")
+    print(profiles)
 
     llvm_ir = tvm.build(mod, target="llvm")
 
@@ -171,14 +198,11 @@ def CompileModel(mod, params, model_name, nn_arch):
         f.write(llvm_ir.get_source())
     
 
-    # performance measuring: https://tvm.apache.org/docs/tutorial/autotvm_relay_x86.html#compile-the-model-with-relay
-    # compiling DL models: https://tvm.apache.org/docs/tutorial/relay_quick_start.html
-
 if __name__ == '__main__':
 
   
     #resnet, bert, Potential todo: suppoprt ssd and mobilenet
-    nn_arch = "bert"
+    nn_arch = "resnet"
 
     # Config to easily change from one neural net architecture to another
     model_config = {
@@ -196,7 +220,7 @@ if __name__ == '__main__':
     with open(model_config[nn_arch]["file"]) as user_file:
         model_names = json.load(user_file)
 
-    for model_name in model_names:
+    for model_name in model_names[:1]:
         model = model_config[nn_arch]["loader"].from_pretrained(model_name ,torchscript=True)
         # model = ResNetForImageClassification.from_pretrained(model_name ,torchscript=True)
         # model = BertModel.from_pretrained(model_name ,torchscript=True)
@@ -206,7 +230,16 @@ if __name__ == '__main__':
 
         mod, params = GenerateComputationGraph(model, nn_arch)
         VisualizeGraph(mod, output_file, nn_arch)
-        CompileModel(mod, params, output_file, nn_arch)
+        # CompileModelToLLVM(mod, params, output_file, nn_arch)
+
+
+        # Example for compiling model + time instrument
+        passes = [
+            relay.transform.FoldConstant(),
+            relay.transform.EliminateCommonSubexpr(),
+            relay.transform.FuseOps(),
+        ]
+        CompileModel(mod, passes)
         
 
 # Compile the model

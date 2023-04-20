@@ -162,8 +162,8 @@ attributes #0 = { nounwind readnone "target-cpu"="generic" "target-features" }
 !llvm.dbg.cu = !{!0}
 !llvm.module.flags = !{!3, !4}
 
-!0 = distinct !DICompileUnit(language: DW_LANG_C, file: !1, producer: "TVM", isOptimized: false, runtimeVersion: 0, emissionKind: FullDebug, enums: !2, dwoId: 1)
-!1 = !DIFile(filename: "model.tvm", directory: "/tmp/")
+!0 = distinct !DICompileUnit(language: DW_LANG_C, file: !1, producer: "TVM", isOptimized: false, runtimeVersion: 0, emissionKind: FullDebug, enums: !2)
+!1 = !DIFile(filename: "main.tir", directory: ".")
 !2 = !{}
 !3 = !{i32 2, !"tvm_target", !"llvm -mtriple=x86_64-unknown-linux-gnu"}
 !4 = !{i32 4, !"Debug Info Version", i32 3}
