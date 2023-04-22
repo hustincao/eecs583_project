@@ -1,1 +1,1 @@
-sequential: 15us [15us] (100.00%; 100.00%)
+sequential: 32us [32us] (100.00%; 100.00%)

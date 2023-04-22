@@ -123,7 +123,7 @@ def get_best_passes(model_filenames):
 def CompileModel(mod, passes):
     target = tvm.target.Target("llvm", host="llvm")
     
-    pass_seq = tvm.transform.Sequential(passes)
+    pass_seq = tvm.transform.Sequential(passes, opt_level = 3)
 
     timing_inst = PassTimingInstrument()
 
@@ -229,7 +229,10 @@ def main():
         #     continue
         model = loader.from_pretrained(test_data, torchscript=True)
         mod, params = GenerateComputationGraph(model, nn_arch)
-        CompileModel(mod, pass_sequence) # Compile and get execution time
+        time = CompileModel(mod, pass_sequence) # Compile and get execution time
+        result_path = '/Users/shinkamori/Documents/eecs583_project/results/o3/' + test_data.replace('/', '_') + '.txt'
+        with open(result_path, 'w') as f:
+            f.writelines(time)
         print('DONE')
         # break
         #### APPLY BASELINE PASSES TO TEST SAMPLE ####
