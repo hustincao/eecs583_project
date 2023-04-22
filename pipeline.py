@@ -1,8 +1,10 @@
 from knn import *
 from extract_features import *
+from get_model import *
 import random
 import pandas as pd
 import os
+from transformers import ResNetForImageClassification, BertModel, BertTokenizer
 
 ''' provided an input code, output the feature vector (init) '''
 def get_vector_representation(model_name, feature_order):
@@ -44,36 +46,39 @@ def get_feature_order(model_filenames):
     return list(set(feature_order))
 
 def get_pass(pass_name):
-    if pass_name == 'AlterOpLayout':
-        return relay.transform.AlterOpLayout()
-    if pass_name == 'BatchingOps':
-        return relay.transform.BatchingOps()
-    if pass_name == 'CanonicalizeOps':
-        return relay.transform.CanonicalizeOps() 
-    if pass_name == 'CombineParallelConv2D':
-        return relay.transform.CombineParallelConv2D() 
-    if pass_name == 'CombineParallelDense':
-        return relay.transform.CombineParallelDense() 
-    if pass_name == 'DeadCodeElimination':
-        return relay.transform.DeadCodeElimination() 
-    if pass_name == 'DefuseOps':
-        return relay.transform.DefuseOps() 
-    if pass_name == 'DynamicToStatic':
-        return relay.transform.DynamicToStatic() 
-    if pass_name == 'EliminateCommonSubexpr':
-        return relay.transform.EliminateCommonSubexpr() 
-    if pass_name == 'FakeQuantizationToInteger':
-        return relay.transform.FakeQuantizationToInteger() 
-    if pass_name == 'FastMath':
-        return relay.transform.FastMath() 
-    if pass_name == 'FoldConstant':
-        return relay.transform.FoldConstant() 
-    if pass_name == 'RemoveUnusedFunctions':
-        return relay.transform.RemoveUnusedFunctions() 
-    if pass_name == 'SimplifyExpr':
-        return relay.transform.SimplifyExpr() 
-    if pass_name == 'ToGraphNormalForm':
-        return relay.transform.ToGraphNormalForm()
+    '''Assumes pass_name gets passed in as a tuple (string, int)'''
+    # print(getattr(relay.transform, pass_name))
+    return getattr(relay.transform, pass_name[0])
+    # if pass_name == 'AlterOpLayout':
+    #     return relay.transform.AlterOpLayout
+    # if pass_name == 'BatchingOps':
+    #     return relay.transform.BatchingOps()
+    # if pass_name == 'CanonicalizeOps':
+    #     return relay.transform.CanonicalizeOps()
+    # if pass_name == 'CombineParallelConv2D':
+    #     return relay.transform.CombineParallelConv2D() 
+    # if pass_name == 'CombineParallelDense':
+    #     return relay.transform.CombineParallelDense() 
+    # if pass_name == 'DeadCodeElimination':
+    #     return relay.transform.DeadCodeElimination() 
+    # if pass_name == 'DefuseOps':
+    #     return relay.transform.DefuseOps() 
+    # if pass_name == 'DynamicToStatic':
+    #     return relay.transform.DynamicToStatic() 
+    # if pass_name == 'EliminateCommonSubexpr':
+    #     return relay.transform.EliminateCommonSubexpr() 
+    # if pass_name == 'FakeQuantizationToInteger':
+    #     return relay.transform.FakeQuantizationToInteger() 
+    # if pass_name == 'FastMath':
+    #     return relay.transform.FastMath
+    # if pass_name == 'FoldConstant':
+    #     return relay.transform.FoldConstant() 
+    # if pass_name == 'RemoveUnusedFunctions':
+    #     return relay.transform.RemoveUnusedFunctions() 
+    # if pass_name == 'SimplifyExpr':
+    #     return relay.transform.SimplifyExpr() 
+    # if pass_name == 'ToGraphNormalForm':
+    #     return relay.transform.ToGraphNormalForm()
 
 
 ''' get the best passes for the models provided '''
@@ -179,12 +184,21 @@ def main():
             sequence.append(models_best_passes_dict[model_name][0])
         # order sequence by execution time
         sequence = sorted(sequence, key=lambda x: x[1], reverse=False)
-
         # apply the passes to the test sample and get execution time
-        for pass_name in sequence:
-            pass_obj = get_pass(pass_name)
+        # for pass_name in sequence:
+        #     pass_obj = get_pass(pass_name[0])
+        #     print(pass_obj)
             # TODO lol ????? 
-        
+
+        # Convert pass names into tvm FunctionPass
+        pass_sequence = [get_pass(x)() for x in sequence]
+        # pass_seq = tvm.transform.Sequential(pass_sequence)
+
+        # Get model to apply pass sequence to
+        model = BertModel.from_pretrained(test_data, torchscript=True)
+        mod, params = GenerateComputationGraph(model, "bert")
+        CompileModel(mod, pass_sequence) # Compile and get execution time
+        break
         #### APPLY BASELINE PASSES TO TEST SAMPLE ####
         # apply baseline passes to test sample and get execution time
 
