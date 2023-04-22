@@ -218,9 +218,15 @@ def main():
                 nn_arch = model
         print(loader)
         print(nn_arch)
+        test_data = test_data.replace('_', '/')
+        print(test_data, 'test_data')
+
+        # if 'facebook_detr-resnet-101-dc5' in test_data or 'fxmarty_resnet-tiny-beans' in test_data:
+        #     continue
         model = loader.from_pretrained(test_data, torchscript=True)
         mod, params = GenerateComputationGraph(model, nn_arch)
         CompileModel(mod, pass_sequence) # Compile and get execution time
+        print('DONE')
         break
         #### APPLY BASELINE PASSES TO TEST SAMPLE ####
         # apply baseline passes to test sample and get execution time
