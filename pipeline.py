@@ -116,7 +116,7 @@ def get_best_passes(model_filenames):
     # order passes
     for model_name in cur_best_passes_dict.keys():
         cur_best_passes_dict[model_name] = sorted(cur_best_passes_dict[model_name], key=lambda x: x[1], reverse=False)
-        print('model name: ',model_name,cur_best_passes_dict[model_name])
+      #  print('model name: ',model_name,cur_best_passes_dict[model_name])
 
     return cur_best_passes_dict
 
@@ -195,16 +195,20 @@ def main():
         #### APPLY BEST PASSES TO TEST SAMPLE ####
         # get sequence of passes to apply to test sample
         sequence = []
+        passes_added = [] # remove duplicates
         for model_name in models_best_passes_dict.keys():
-            # add the (pass_name, time) tuple to sequence
-            sequence.append(models_best_passes_dict[model_name][0])
+            # get more than 1st level of features in case there are non-unique ones in first level
+            for i in range(2):
+                if models_best_passes_dict[model_name][0][0] not in passes_added:
+                    sequence.append(models_best_passes_dict[model_name][0])
+                    passes_added.append(models_best_passes_dict[model_name][0][0])
+                if len(models_best_passes_dict[model_name]) > 1:
+                    if models_best_passes_dict[model_name][1][0] not in passes_added:
+                        sequence.append(models_best_passes_dict[model_name][1])
+                        passes_added.append(models_best_passes_dict[model_name][1][0])
+
         # order sequence by execution time
         sequence = sorted(sequence, key=lambda x: x[1], reverse=False)
-        # apply the passes to the test sample and get execution time
-        # for pass_name in sequence:
-        #     pass_obj = get_pass(pass_name[0])
-        #     print(pass_obj)
-            # TODO lol ????? 
 
         # Convert pass names into tvm FunctionPasses
         pass_sequence = [get_pass(x)() for x in sequence]
