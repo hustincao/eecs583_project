@@ -219,7 +219,7 @@ def main():
         print(loader)
         print(nn_arch)
         test_data = test_data.replace('_', '/')
-        print(test_data, 'test_data')
+        print('TEST_DATA', test_data)
 
         # if 'facebook_detr-resnet-101-dc5' in test_data or 'fxmarty_resnet-tiny-beans' in test_data:
         #     continue
@@ -227,7 +227,7 @@ def main():
         mod, params = GenerateComputationGraph(model, nn_arch)
         CompileModel(mod, pass_sequence) # Compile and get execution time
         print('DONE')
-        break
+        # break
         #### APPLY BASELINE PASSES TO TEST SAMPLE ####
         # apply baseline passes to test sample and get execution time
 

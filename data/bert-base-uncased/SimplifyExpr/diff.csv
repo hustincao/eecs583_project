@@ -1,3 +1,3 @@
-,reshape,multiply,transpose,pass
-0,-12,-1,-180,SimplifyExpr
-1,-12,-1,-180,sequential
+,multiply,reshape,transpose,pass
+0,-1,-12,-180,SimplifyExpr
+1,-1,-12,-180,sequential
