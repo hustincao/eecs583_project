@@ -137,6 +137,22 @@ def main():
 
     data_folder_name = os.getcwd() + '/data/'
 
+    model_config = {
+        "bert":{
+            "file": "bert_models.json",
+            "loader": BertModel
+        },
+        "resnet":{
+            "file": "resnet_models.json",
+            "loader": ResNetForImageClassification
+        }
+    }
+    # Create model 
+    for model in model_config:
+        with open(model_config[model]["file"]) as user_file:
+            model_names = json.load(user_file)
+        model_config[model]["models"] = [x.replace("/", "_") for x in model_names]
+
     # small sample size so we'll do n-1 training
     for i in range(len(os.listdir(data_folder_name))):
         model_names = os.listdir(data_folder_name)
@@ -190,13 +206,20 @@ def main():
         #     print(pass_obj)
             # TODO lol ????? 
 
-        # Convert pass names into tvm FunctionPass
+        # Convert pass names into tvm FunctionPasses
         pass_sequence = [get_pass(x)() for x in sequence]
-        # pass_seq = tvm.transform.Sequential(pass_sequence)
 
         # Get model to apply pass sequence to
-        model = BertModel.from_pretrained(test_data, torchscript=True)
-        mod, params = GenerateComputationGraph(model, "bert")
+        loader = None
+        nn_arch = None
+        for model in model_config:
+            if test_data in model_config[model]["models"]:
+                loader = model_config[model]["loader"]
+                nn_arch = model
+        print(loader)
+        print(nn_arch)
+        model = loader.from_pretrained(test_data, torchscript=True)
+        mod, params = GenerateComputationGraph(model, nn_arch)
         CompileModel(mod, pass_sequence) # Compile and get execution time
         break
         #### APPLY BASELINE PASSES TO TEST SAMPLE ####
