@@ -181,6 +181,9 @@ def main():
         sequence = sorted(sequence, key=lambda x: x[1], reverse=False)
 
         # apply the passes to the test sample and get execution time
+        for pass_name in sequence:
+            pass_obj = get_pass(pass_name)
+            # TODO lol ????? 
         
         #### APPLY BASELINE PASSES TO TEST SAMPLE ####
         # apply baseline passes to test sample and get execution time
