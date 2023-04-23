@@ -1,3 +1,4 @@
+import time
 from knn import *
 from extract_features import *
 from get_model import *
@@ -120,18 +121,48 @@ def get_best_passes(model_filenames):
 
     return cur_best_passes_dict
 
-def CompileModel(mod, passes):
+def CompileModel(mod, params, passes):
     target = tvm.target.Target("llvm", host="llvm")
-    
+    dev = tvm.cpu(0)
     pass_seq = tvm.transform.Sequential(passes, opt_level = 3)
 
     timing_inst = PassTimingInstrument()
 
     with tvm.transform.PassContext(instruments=[timing_inst]):
         mod = pass_seq(mod)
+        lib = relay.build(mod, target=target, params=params)
         profiles = timing_inst.render()
 
-    return profiles
+    m = tvm.contrib.graph_executor.GraphModule(lib["default"](dev))
+    
+    t0 = time.time()
+    m.run()
+    t1 = time.time()
+    print("KNN Runtime: ", t1-t0)
+    tvm_output = m.get_output(0)
+
+    return profiles, str(t1-t0)
+
+# Returns compile_time, execution_time
+def CompileModelBaseline(mod, params):
+    target = tvm.target.Target("llvm", host="llvm")
+    dev = tvm.cpu(0)
+    # pass_seq = tvm.transform.Sequential(passes, opt_level = 3)
+
+    timing_inst = PassTimingInstrument()
+
+    with tvm.transform.PassContext(instruments=[timing_inst], opt_level=3):
+        lib = relay.build(mod, target=target, params=params)
+        profiles = timing_inst.render()
+
+    m = tvm.contrib.graph_executor.GraphModule(lib["default"](dev))
+    t0 = time.time()
+    m.run()
+    t1 = time.time()
+    print("Baseline Runtime: ", t1-t0)
+    tvm_output = m.get_output(0)
+
+    return profiles, str(t1-t0)
 
 def main():
 
@@ -213,30 +244,36 @@ def main():
         # Convert pass names into tvm FunctionPasses
         pass_sequence = [get_pass(x)() for x in sequence]
 
-        # Get model to apply pass sequence to
+        # Get model to apply pass sequence to (differs for ResNet and BERT)
         loader = None
         nn_arch = None
         for model in model_config:
             if test_data in model_config[model]["models"]:
                 loader = model_config[model]["loader"]
                 nn_arch = model
-        print(loader)
-        print(nn_arch)
-        test_data = test_data.replace('_', '/')
-        print('TEST_DATA', test_data)
 
-        # if 'facebook_detr-resnet-101-dc5' in test_data or 'fxmarty_resnet-tiny-beans' in test_data:
-        #     continue
+        test_data = test_data.replace('_', '/')
+ 
         model = loader.from_pretrained(test_data, torchscript=True)
         mod, params = GenerateComputationGraph(model, nn_arch)
-        time = CompileModel(mod, pass_sequence) # Compile and get execution time
-        result_path = '/Users/shinkamori/Documents/eecs583_project/results/o3/' + test_data.replace('/', '_') + '.txt'
-        with open(result_path, 'w') as f:
-            f.writelines(time)
+
+        # Compile with KNN passes
+        compile_profile, exec_time = CompileModel(mod, params, pass_sequence) # Compile and get execution time
+        with open(f'results/knn/{test_data}_compile_profile.txt', 'w') as f:
+            f.writelines(compile_profile)
+    
+        with open(f'results/knn/{test_data}_execution_time.txt', 'w') as f:
+            f.writelines(exec_time)
+        
+        # Compile with baseline opt_level=3
+        compile_profile, exec_time = CompileModelBaseline(mod, params)
+        with open(f'results/o3/{test_data}_compile_profile.txt', 'w') as f:
+            f.writelines(compile_profile)
+
+        with open(f'results/o3/{test_data}_execution_time.txt', 'w') as f:
+            f.writelines(exec_time)
         print('DONE')
-        # break
-        #### APPLY BASELINE PASSES TO TEST SAMPLE ####
-        # apply baseline passes to test sample and get execution time
+
 
 
 if __name__=='__main__':

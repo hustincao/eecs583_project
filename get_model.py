@@ -67,9 +67,9 @@ def GenerateComputationGraph(model, nn_arch):
         dummy_input = [tokens_tensor, segments_tensors]
 
         # If you are instantiating the model with `from_pretrained` you can also easily set the TorchScript flag
-        model = BertModel.from_pretrained("bert-base-uncased", torchscript=True)
+        # model = BertModel.from_pretrained("bert-base-uncased", torchscript=True)
 
-        model.eval()
+        # model.eval()
         for p in model.parameters():
             p.requires_grad_(False)
 
@@ -151,7 +151,7 @@ def VisualizeGraph(mod, model_name, nn_arch):
 #, target, passes
 def CompileModel(mod, passes):
     target = tvm.target.Target("llvm", host="llvm")
-    
+    print(passes)
     pass_seq = tvm.transform.Sequential(passes)
 
     timing_inst = PassTimingInstrument()
@@ -160,8 +160,11 @@ def CompileModel(mod, passes):
         mod = pass_seq(mod)
         profiles = timing_inst.render()
 
-    print("Printing results of timing profile...")
-    print(profiles)
+    # print("Printing results of timing profile...")
+    # print(profiles)
+
+    return profiles
+    
 
 
 def CompileModelToLLVM(mod, params, model_name, nn_arch):
