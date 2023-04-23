@@ -129,19 +129,23 @@ def CompileModel(mod, params, passes):
     timing_inst = PassTimingInstrument()
 
     with tvm.transform.PassContext(instruments=[timing_inst]):
+        t2 = time.time()
         mod = pass_seq(mod)
         lib = relay.build(mod, target=target, params=params)
-        profiles = timing_inst.render()
+        t3 = time.time()
+        # profiles = timing_inst.render()
+
 
     m = tvm.contrib.graph_executor.GraphModule(lib["default"](dev))
     
     t0 = time.time()
     m.run()
     t1 = time.time()
+    print("KNN Compile time: ", t3-t2)
     print("KNN Runtime: ", t1-t0)
     tvm_output = m.get_output(0)
 
-    return profiles, str(t1-t0)
+    return str(t3-t2), str(t1-t0)
 
 # Returns compile_time, execution_time
 def CompileModelBaseline(mod, params):
@@ -152,17 +156,20 @@ def CompileModelBaseline(mod, params):
     timing_inst = PassTimingInstrument()
 
     with tvm.transform.PassContext(instruments=[timing_inst], opt_level=3):
+        t2 = time.time()
         lib = relay.build(mod, target=target, params=params)
+        t3 = time.time()
         profiles = timing_inst.render()
 
     m = tvm.contrib.graph_executor.GraphModule(lib["default"](dev))
     t0 = time.time()
     m.run()
     t1 = time.time()
+    print("Baseline Compile time: ", t3-t2)
     print("Baseline Runtime: ", t1-t0)
     tvm_output = m.get_output(0)
 
-    return profiles, str(t1-t0)
+    return str(t3-t2), str(t1-t0)
 
 def main():
 
@@ -186,12 +193,16 @@ def main():
 
     # small sample size so we'll do n-1 training
     for i in range(len(os.listdir(data_folder_name))):
+       
         model_names = os.listdir(data_folder_name)
 
         #### GET INITIAL FEATURE VECTORS FOR MODELS ####
         # split into train and test data
         train_data = model_names[:i] + model_names[i+1:]
         test_data = model_names[i]
+        print(test_data)
+        if(test_data != "fxmarty_resnet-tiny-beans"):
+            continue
         train_data_vec_dict = {} # in format key=model_name,val=vector representation of model_name
         test_data_vec_dict = {test_data:[]}
         # get feature order for the vectors
@@ -253,24 +264,28 @@ def main():
                 nn_arch = model
 
         test_data = test_data.replace('_', '/')
- 
+
+
         model = loader.from_pretrained(test_data, torchscript=True)
         mod, params = GenerateComputationGraph(model, nn_arch)
 
-        # Compile with KNN passes
+
+        output_file = test_data.replace('/', '_')
+        print(output_file)
+        # # Compile with KNN passes
         compile_profile, exec_time = CompileModel(mod, params, pass_sequence) # Compile and get execution time
-        with open(f'results/knn/{test_data}_compile_profile.txt', 'w') as f:
+        with open(f'results/knn/{output_file}_compile_profile.txt', 'w') as f:
             f.writelines(compile_profile)
     
-        with open(f'results/knn/{test_data}_execution_time.txt', 'w') as f:
+        with open(f'results/knn/{output_file}_execution_time.txt', 'w') as f:
             f.writelines(exec_time)
         
         # Compile with baseline opt_level=3
         compile_profile, exec_time = CompileModelBaseline(mod, params)
-        with open(f'results/o3/{test_data}_compile_profile.txt', 'w') as f:
+        with open(f'results/o3/{output_file}_compile_profile.txt', 'w') as f:
             f.writelines(compile_profile)
 
-        with open(f'results/o3/{test_data}_execution_time.txt', 'w') as f:
+        with open(f'results/o3/{output_file}_execution_time.txt', 'w') as f:
             f.writelines(exec_time)
         print('DONE')
 
