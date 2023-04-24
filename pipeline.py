@@ -88,7 +88,7 @@ def get_best_passes(model_filenames):
     cur_best_passes_dict = {}
     for model_filename in model_filenames:
         #cur_best_passes_dict = {}
-        print(model_filename)
+        # print(model_filename)
         for pass_foldername in os.listdir(model_filename):
             # get the actul pass
             if os.path.isdir(model_filename + '/' + pass_foldername):
@@ -141,8 +141,8 @@ def CompileModel(mod, params, passes):
     t0 = time.time()
     m.run()
     t1 = time.time()
-    print("KNN Compile time: ", t3-t2)
-    print("KNN Runtime: ", t1-t0)
+    # print("KNN Compile time: ", t3-t2)
+    # print("KNN Runtime: ", t1-t0)
     tvm_output = m.get_output(0)
 
     return str(t3-t2), str(t1-t0)
@@ -165,8 +165,8 @@ def CompileModelBaseline(mod, params):
     t0 = time.time()
     m.run()
     t1 = time.time()
-    print("Baseline Compile time: ", t3-t2)
-    print("Baseline Runtime: ", t1-t0)
+    # print("Baseline Compile time: ", t3-t2)
+    # print("Baseline Runtime: ", t1-t0)
     tvm_output = m.get_output(0)
 
     return str(t3-t2), str(t1-t0)
@@ -200,7 +200,6 @@ def main():
         # split into train and test data
         train_data = model_names[:i] + model_names[i+1:]
         test_data = model_names[i]
-        print(test_data)
         if(test_data != "fxmarty_resnet-tiny-beans"):
             continue
         train_data_vec_dict = {} # in format key=model_name,val=vector representation of model_name
@@ -271,7 +270,7 @@ def main():
 
 
         output_file = test_data.replace('/', '_')
-        print(output_file)
+        # print(output_file)
         # # Compile with KNN passes
         compile_profile, exec_time = CompileModel(mod, params, pass_sequence) # Compile and get execution time
         with open(f'results/knn/{output_file}_compile_profile.txt', 'w') as f:
