@@ -367,59 +367,59 @@ def get_features_for_pass(mod, param, datadir, model_name):
     #         relay.transform.DefuseOps(),
     #         relay.transform.EliminateCommonSubexpr()
     #         ],
-    'AS-0': [relay.transform.AlterOpLayout(),
-             relay.transform.FuseOps(),
-             relay.transform.SimplifyExpr(),
-             relay.transform.FoldConstant(),
-             relay.transform.DeadCodeElimination(),
-            #  relay.transform.MergeComposite().
-             relay.transform.FastMath(),
-             relay.transform.RemoveUnusedFunctions()
-    ],
-    'AS-1': [
-            relay.transform.SimplifyExpr(),
-            relay.transform.FuseOps(),
-            relay.transform.AlterOpLayout(),
-            # relay.transform.MergeComposite(),
-            relay.transform.FastMath(),
-            relay.transform.DeadCodeElimination(),
-            relay.transform.FoldConstant(),
-            relay.transform.RemoveUnusedFunctions()
-            ],
-    'PO-0': [
-            relay.transform.AlterOpLayout(),
-            relay.transform.CombineParallelConv2D(),
-            relay.transform.DefuseOps(),
-            relay.transform.DynamicToStatic(),
-            relay.transform.CanonicalizeOps(),
-            relay.transform.CanonicalizeCast(),
-    ],
-    'PO-1': [
-            relay.transform.CanonicalizeCast(),
-            relay.transform.AlterOpLayout(),
-            relay.transform.DefuseOps(),
-            relay.transform.CombineParallelConv2D(),
-            relay.transform.FakeQuantizationToInteger()
+    # 'AS-0': [relay.transform.AlterOpLayout(),
+    #          relay.transform.FuseOps(),
+    #          relay.transform.SimplifyExpr(),
+    #          relay.transform.FoldConstant(),
+    #          relay.transform.DeadCodeElimination(),
+    #         #  relay.transform.MergeComposite().
+    #          relay.transform.FastMath(),
+    #          relay.transform.RemoveUnusedFunctions()
+    # ],
+    # 'AS-1': [
+    #         relay.transform.SimplifyExpr(),
+    #         relay.transform.FuseOps(),
+    #         relay.transform.AlterOpLayout(),
+    #         # relay.transform.MergeComposite(),
+    #         relay.transform.FastMath(),
+    #         relay.transform.DeadCodeElimination(),
+    #         relay.transform.FoldConstant(),
+    #         relay.transform.RemoveUnusedFunctions()
+    #         ],
+    # 'PO-0': [
+    #         relay.transform.AlterOpLayout(),
+    #         relay.transform.CombineParallelConv2D(),
+    #         relay.transform.DefuseOps(),
+    #         relay.transform.DynamicToStatic(),
+    #         relay.transform.CanonicalizeOps(),
+    #         relay.transform.CanonicalizeCast(),
+    # ],
+    # 'PO-1': [
+    #         relay.transform.CanonicalizeCast(),
+    #         relay.transform.AlterOpLayout(),
+    #         relay.transform.DefuseOps(),
+    #         relay.transform.CombineParallelConv2D(),
+    #         relay.transform.FakeQuantizationToInteger()
         
-    ],
-    'PO-2':[
-        relay.transform.CanonicalizeCast(),
-        relay.transform.CombineParallelConv2D(),
-        relay.transform.EliminateCommonSubexpr(),
-        # relay.transform.SimplifyFCTranspose(),
-        relay.transform.CanonicalizeOps(),
-        relay.transform.DefuseOps(),
-        relay.transform.ToGraphNormalForm(),
-        relay.transform.ToGraphNormalForm()
-    ],
-    'PO-3':[
-        relay.transform.CombineParallelDense(),
-        relay.transform.FakeQuantizationToInteger(),
-        relay.transform.AlterOpLayout(),
-        relay.transform.CombineParallelConv2D(),
-        relay.transform.ToGraphNormalForm(),
-        relay.transform.CanonicalizeOps()
-    ]
+    # ],
+    # 'PO-2':[
+    #     relay.transform.CanonicalizeCast(),
+    #     relay.transform.CombineParallelConv2D(),
+    #     relay.transform.EliminateCommonSubexpr(),
+    #     # relay.transform.SimplifyFCTranspose(),
+    #     relay.transform.CanonicalizeOps(),
+    #     relay.transform.DefuseOps(),
+    #     relay.transform.ToGraphNormalForm(),
+    #     relay.transform.ToGraphNormalForm()
+    # ],
+    # 'PO-3':[
+    #     relay.transform.CombineParallelDense(),
+    #     relay.transform.FakeQuantizationToInteger(),
+    #     relay.transform.AlterOpLayout(),
+    #     relay.transform.CombineParallelConv2D(),
+    #     relay.transform.ToGraphNormalForm(),
+    #     relay.transform.CanonicalizeOps()
+    # ]
 
     }
     # pass_dict = {
